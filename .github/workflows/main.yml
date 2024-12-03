@@ -9,7 +9,8 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout Code
+        uses: actions/checkout@v3
 
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v1
@@ -26,14 +27,26 @@ jobs:
       - name: Deploy to EC2 Instance
         uses: appleboy/ssh-action@master
         with:
-          host: your_ec2_public_ip
-          username: ubuntu  # Replace with your EC2 instance username
-          key: ~/.ssh/id_rsa  # Location of your private key
+          host: ${{ secrets.EC2_HOST }}  # Use the EC2 public IP from your GitHub secrets
+          username: ${{ secrets.EC2_USER }}  # EC2 username (typically ubuntu, centos, etc.)
+          key: ~/.ssh/id_rsa  # Path to your private SSH key (automatically set by setup-ssh-key)
           script: |
+            #!/bin/bash
             sudo apt-get update -y
             sudo apt-get install -y nodejs npm
-            cd /path/to/your/app  # Replace with the deployment directory
-            git clone https://github.com/your_username/your_repo.git
-            cd your_repo
+
+            # Navigate to the deployment directory (adjust path if needed)
+            cd /var/www/html  # Change this to the directory where your app should be
+
+            # If necessary, clone the repository
+            # git clone https://github.com/your_username/your_repo.git
+
+            # Navigate to the app directory and install dependencies
+            # cd your_repo
             npm install
-            npm start
+
+            # Restart the application (if running) or start it
+            sudo systemctl restart apache2 || sudo service httpd restart
+
+            # Optionally, run your app (if not served by Apache)
+            # npm start
