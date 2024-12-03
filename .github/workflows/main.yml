@@ -1,29 +1,39 @@
-name: Deploy JavaScript App to AWS EC2
+name: Deploy to AWS EC2
 
 on:
   push:
-    branches:
-      - main
+    branches: [main]
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v3
+      - uses: actions/checkout@v3
 
-    - name: Set up SSH
-      uses: webfactory/ssh-agent@v0.5.3
-      with:
-        ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1  # Replace with your desired region
 
-    - name: Upload files to EC2
-      run: |
-        scp -r ./src ubuntu@${{ secrets.EC2_HOST }}:/var/www/html/
-      env:
-        EC2_HOST: ${{ secrets.EC2_HOST }}
+      - name: Set up SSH Key
+        uses: shimatsu/setup-ssh-key@v2
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
 
-    - name: Restart Web Server
-      run: |
-        ssh ubuntu@${{ secrets.EC2_HOST }} "sudo systemctl restart nginx"
+      - name: Deploy to EC2 Instance
+        uses: appleboy/ssh-action@master
+        with:
+          host: your_ec2_public_ip
+          username: ubuntu  # Replace with your EC2 instance username
+          key: ~/.ssh/id_rsa  # Location of your private key
+          script: |
+            sudo apt-get update -y
+            sudo apt-get install -y nodejs npm
+            cd /path/to/your/app  # Replace with the deployment directory
+            git clone https://github.com/your_username/your_repo.git
+            cd your_repo
+            npm install
+            npm start
