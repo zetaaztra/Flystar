@@ -7,45 +7,23 @@ on:
 
 jobs:
   deploy:
-    name: Deploy to EC2
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@v3
+    - name: Checkout code
+      uses: actions/checkout@v3
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: '16'
+    - name: Set up SSH
+      uses: webfactory/ssh-agent@v0.8.1
+      with:
+        ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
 
-      - name: Install Dependencies
-        run: |
-          cd src
-          npm install
+    - name: Upload files to EC2
+      run: |
+        scp -r ./src ubuntu@${{ secrets.EC2_HOST }}:/var/www/html/
+      env:
+        EC2_HOST: ${{ secrets.EC2_HOST }}
 
-      - name: Package Application
-        run: |
-          cd src
-          npm run build || echo "Skip if not applicable"
-
-      - name: Configure SSH
-        run: |
-          mkdir -p ~/.ssh
-          echo "${{ secrets.EC2_PRIVATE_KEY }}" > ~/.ssh/id_rsa
-          chmod 600 ~/.ssh/id_rsa
-          ssh-keyscan -H ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts
-
-      - name: Debug SSH Configuration
-        run: |
-          ls -al ~/.ssh
-          cat ~/.ssh/id_rsa
-          cat ~/.ssh/known_hosts
-
-      - name: Deploy to EC2
-        env:
-          HOST: ${{ secrets.EC2_HOST }}
-          USERNAME: ${{ secrets.EC2_USER }}
-        run: |
-          scp -o StrictHostKeyChecking=no -r ./src ${USERNAME}@${HOST}:/var/www/html
-          ssh -o StrictHostKeyChecking=no ${USERNAME}@${HOST} "sudo systemctl restart apache2 || sudo service httpd restart"
+    - name: Restart Web Server
+      run: |
+        ssh ubuntu@${{ secrets.EC2_HOST }} "sudo systemctl restart nginx"
